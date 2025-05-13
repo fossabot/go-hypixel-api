@@ -1,0 +1,44 @@
+name: lint
+
+on: [ push, pull_request ]
+
+env:
+  GO_VERSION: 1.24.x
+
+jobs:
+  golangci-lint:
+    name: golangci-lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set up Go
+        uses: actions/setup-go@master
+
+      - name: Configure git for private modules
+        run: |
+          git config --global url."https://${{ secrets.ACCESS_TOKEN }}@github.com".insteadOf "https://github.com"
+
+      - name: Check out code
+        uses: actions/checkout@master
+
+      - name: Get dependencies
+        run: go mod tidy
+
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@master
+        with:
+          version: latest
+          args: --timeout=10m
+
+      - name: Commit lint changes
+        if: ${{ !github.head_ref }}
+        continue-on-error: true
+        run: |
+          git config --local user.name 'github-actions[bot]'
+          git config --local user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add --all
+          git commit -m "chore: lint style"
+
+      - name: Create commit lint change pr
+        if: ${{ !github.head_ref }}
+        continue-on-error: true
+        uses: peter-evans/create-pull-request@main

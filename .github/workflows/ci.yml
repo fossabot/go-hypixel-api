@@ -1,0 +1,29 @@
+name: ci
+
+on: [ push, pull_request ]
+
+env:
+  GO_VERSION: 1.24.x
+
+jobs:
+  build-test-vet:
+    name: Build, Test & Vet
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set up Go
+        uses: actions/setup-go@master
+
+      - name: Check out code
+        uses: actions/checkout@master
+
+      - name: Get dependencies
+        run: go mod tidy
+
+      - name: Build
+        run: go build -v ./...
+
+      - name: Test
+        run: go test $(go list ./...)
+
+      - name: Vet
+        run: go vet $(go list ./...)
