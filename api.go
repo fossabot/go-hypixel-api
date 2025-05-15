@@ -11,7 +11,7 @@ type Request struct {
 	Header  http.Header
 	Path    string
 	URL     string // Replace full url in PreRequestHook and Callback!
-	Params  *Params
+	Params  Params
 	Payload []byte
 }
 
@@ -29,9 +29,11 @@ func (c *Client) Get(r Request) (Response, error) {
 		r.Method = http.MethodGet
 	}
 	r.URL = c.GetFullPath(r.Path)
-	if r.Params != nil {
-		r.URL = r.Params.String(r.URL)
+	if r.Params == nil {
+		r.Params = Params{}
 	}
+	r.URL = r.Params.String(r.URL)
+
 	if c.GetPreRequestHook() != nil {
 		response, err := c.GetPreRequestHook()(r)
 		if err == nil {
@@ -100,7 +102,7 @@ func (c *Client) GetPlayerData(uuid string) (Response, error) {
 		Method: http.MethodGet,
 		Header: c.AuthHeader(),
 		Path:   "player",
-		Params: &Params{
+		Params: Params{
 			"uuid": uuid,
 		},
 	})
@@ -115,7 +117,7 @@ func (c *Client) GetRecentGames(uuid string) (Response, error) {
 		Method: http.MethodGet,
 		Header: c.AuthHeader(),
 		Path:   "recentgames",
-		Params: &Params{
+		Params: Params{
 			"uuid": uuid,
 		},
 	})
@@ -130,7 +132,7 @@ func (c *Client) GetStatus(uuid string) (Response, error) {
 		Method: http.MethodGet,
 		Header: c.AuthHeader(),
 		Path:   "status",
-		Params: &Params{
+		Params: Params{
 			"uuid": uuid,
 		},
 	})
@@ -145,7 +147,7 @@ func (c *Client) GetGuild(id, player, name string) (Response, error) {
 		Method: http.MethodGet,
 		Header: c.AuthHeader(),
 		Path:   "guild",
-		Params: &Params{
+		Params: Params{
 			"id":     id,
 			"player": player,
 			"name":   name,
@@ -160,9 +162,7 @@ func (c *Client) GetGuild(id, player, name string) (Response, error) {
 func (c *Client) GetGamesInformation() (Response, error) {
 	return c.Get(Request{
 		Method: http.MethodGet,
-		Header: nil,
 		Path:   "resources/games",
-		Params: nil,
 	})
 }
 
@@ -172,9 +172,7 @@ func (c *Client) GetGamesInformation() (Response, error) {
 func (c *Client) GetAchievements() (Response, error) {
 	return c.Get(Request{
 		Method: http.MethodGet,
-		Header: nil,
 		Path:   "resources/achievements",
-		Params: nil,
 	})
 }
 
@@ -184,9 +182,7 @@ func (c *Client) GetAchievements() (Response, error) {
 func (c *Client) GetChallenges() (Response, error) {
 	return c.Get(Request{
 		Method: http.MethodGet,
-		Header: nil,
 		Path:   "resources/challenges",
-		Params: nil,
 	})
 }
 
@@ -196,9 +192,7 @@ func (c *Client) GetChallenges() (Response, error) {
 func (c *Client) GetQuests() (Response, error) {
 	return c.Get(Request{
 		Method: http.MethodGet,
-		Header: nil,
 		Path:   "resources/quests",
-		Params: nil,
 	})
 }
 
@@ -208,9 +202,7 @@ func (c *Client) GetQuests() (Response, error) {
 func (c *Client) GetGuildAchievements() (Response, error) {
 	return c.Get(Request{
 		Method: http.MethodGet,
-		Header: nil,
 		Path:   "resources/guilds/achievements",
-		Params: nil,
 	})
 }
 
@@ -220,9 +212,7 @@ func (c *Client) GetGuildAchievements() (Response, error) {
 func (c *Client) GetVanityPets() (Response, error) {
 	return c.Get(Request{
 		Method: http.MethodGet,
-		Header: nil,
 		Path:   "resources/vanity/pets",
-		Params: nil,
 	})
 }
 
@@ -232,9 +222,7 @@ func (c *Client) GetVanityPets() (Response, error) {
 func (c *Client) GetVanityCompanions() (Response, error) {
 	return c.Get(Request{
 		Method: http.MethodGet,
-		Header: nil,
 		Path:   "resources/vanity/companions",
-		Params: nil,
 	})
 }
 
@@ -245,9 +233,7 @@ func (c *Client) GetVanityCompanions() (Response, error) {
 func (c *Client) GetSkyBlockCollections() (Response, error) {
 	return c.Get(Request{
 		Method: http.MethodGet,
-		Header: nil,
 		Path:   "resources/skyblock/collections",
-		Params: nil,
 	})
 }
 
@@ -258,9 +244,7 @@ func (c *Client) GetSkyBlockCollections() (Response, error) {
 func (c *Client) GetSkyBlockSkills() (Response, error) {
 	return c.Get(Request{
 		Method: http.MethodGet,
-		Header: nil,
 		Path:   "resources/skyblock/skills",
-		Params: nil,
 	})
 }
 
@@ -271,9 +255,7 @@ func (c *Client) GetSkyBlockSkills() (Response, error) {
 func (c *Client) GetSkyBlockItems() (Response, error) {
 	return c.Get(Request{
 		Method: http.MethodGet,
-		Header: nil,
 		Path:   "resources/skyblock/items",
-		Params: nil,
 	})
 }
 
@@ -284,9 +266,7 @@ func (c *Client) GetSkyBlockItems() (Response, error) {
 func (c *Client) GetSkyBlockElectionAndMayor() (Response, error) {
 	return c.Get(Request{
 		Method: http.MethodGet,
-		Header: nil,
 		Path:   "resources/skyblock/election",
-		Params: nil,
 	})
 }
 
@@ -297,9 +277,7 @@ func (c *Client) GetSkyBlockElectionAndMayor() (Response, error) {
 func (c *Client) GetSkyBlockCurrentBingoEvent() (Response, error) {
 	return c.Get(Request{
 		Method: http.MethodGet,
-		Header: nil,
 		Path:   "resources/skyblock/bingo",
-		Params: nil,
 	})
 }
 
@@ -312,7 +290,6 @@ func (c *Client) GetSkyBlockNews() (Response, error) {
 		Method: http.MethodGet,
 		Header: c.AuthHeader(),
 		Path:   "skyblock/news",
-		Params: nil,
 	})
 }
 
@@ -326,7 +303,7 @@ func (c *Client) GetAuctions(uuid, player, profile string) (Response, error) {
 		Method: http.MethodGet,
 		Header: c.AuthHeader(),
 		Path:   "skyblock/auction",
-		Params: &Params{
+		Params: Params{
 			"uuid":    uuid,
 			"player":  player,
 			"profile": profile,
@@ -341,9 +318,8 @@ func (c *Client) GetAuctions(uuid, player, profile string) (Response, error) {
 func (c *Client) GetActiveAuctions(page uint) (Response, error) {
 	return c.Get(Request{
 		Method: http.MethodGet,
-		Header: nil,
 		Path:   "skyblock/auctions",
-		Params: &Params{
+		Params: Params{
 			"page": page,
 		},
 	})
@@ -356,9 +332,7 @@ func (c *Client) GetActiveAuctions(page uint) (Response, error) {
 func (c *Client) GetRecentlyEndedAuctions() (Response, error) {
 	return c.Get(Request{
 		Method: http.MethodGet,
-		Header: nil,
 		Path:   "skyblock/auctions_ended",
-		Params: nil,
 	})
 }
 
@@ -383,9 +357,7 @@ func (c *Client) GetRecentlyEndedAuctions() (Response, error) {
 func (c *Client) GetBazaar() (Response, error) {
 	return c.Get(Request{
 		Method: http.MethodGet,
-		Header: nil,
 		Path:   "skyblock/bazaar",
-		Params: nil,
 	})
 }
 
@@ -399,7 +371,7 @@ func (c *Client) GetProfileByUUID(profile string) (Response, error) {
 		Method: http.MethodGet,
 		Header: c.AuthHeader(),
 		Path:   "skyblock/profile",
-		Params: &Params{
+		Params: Params{
 			"profile": profile,
 		},
 	})
@@ -414,7 +386,7 @@ func (c *Client) GetProfilesByPlayer(uuid string) (Response, error) {
 		Method: http.MethodGet,
 		Header: c.AuthHeader(),
 		Path:   "skyblock/profiles",
-		Params: &Params{
+		Params: Params{
 			"uuid": uuid,
 		},
 	})
@@ -430,7 +402,7 @@ func (c *Client) GetMuseumData(profile string) (Response, error) {
 		Method: http.MethodGet,
 		Header: c.AuthHeader(),
 		Path:   "skyblock/museum",
-		Params: &Params{
+		Params: Params{
 			"profile": profile,
 		},
 	})
@@ -446,7 +418,7 @@ func (c *Client) GetGardenData(profile string) (Response, error) {
 		Method: http.MethodGet,
 		Header: c.AuthHeader(),
 		Path:   "skyblock/garden",
-		Params: &Params{
+		Params: Params{
 			"profile": profile,
 		},
 	})
@@ -462,7 +434,7 @@ func (c *Client) GetBingoData(uuid string) (Response, error) {
 		Method: http.MethodGet,
 		Header: c.AuthHeader(),
 		Path:   "skyblock/bingo",
-		Params: &Params{
+		Params: Params{
 			"uuid": uuid,
 		},
 	})
@@ -475,9 +447,7 @@ func (c *Client) GetBingoData(uuid string) (Response, error) {
 func (c *Client) GetActiveOrUpcomingFireSales() (Response, error) {
 	return c.Get(Request{
 		Method: http.MethodGet,
-		Header: nil,
 		Path:   "skyblock/firesales",
-		Params: nil,
 	})
 }
 
@@ -491,7 +461,6 @@ func (c *Client) GetCurrentlyActivePublicHouses() (Response, error) {
 		Method: http.MethodGet,
 		Header: c.AuthHeader(),
 		Path:   "housing/active",
-		Params: nil,
 	})
 }
 
@@ -505,7 +474,7 @@ func (c *Client) GetSpecificHouseInformation(house string) (Response, error) {
 		Method: http.MethodGet,
 		Header: c.AuthHeader(),
 		Path:   "housing/house",
-		Params: &Params{
+		Params: Params{
 			"house": house,
 		},
 	})
@@ -521,7 +490,7 @@ func (c *Client) GetSpecificPlayerPublicHouses(player string) (Response, error) 
 		Method: http.MethodGet,
 		Header: c.AuthHeader(),
 		Path:   "housing/houses",
-		Params: &Params{
+		Params: Params{
 			"player": player,
 		},
 	})
@@ -536,7 +505,6 @@ func (c *Client) GetActiveNetworkBoosters() (Response, error) {
 		Method: http.MethodGet,
 		Header: c.AuthHeader(),
 		Path:   "boosters",
-		Params: nil,
 	})
 }
 
@@ -549,7 +517,6 @@ func (c *Client) GetCurrentPlayerCounts() (Response, error) {
 		Method: http.MethodGet,
 		Header: c.AuthHeader(),
 		Path:   "counts",
-		Params: nil,
 	})
 }
 
@@ -562,7 +529,6 @@ func (c *Client) GetCurrentLeaderboards() (Response, error) {
 		Method: http.MethodGet,
 		Header: c.AuthHeader(),
 		Path:   "leaderboards",
-		Params: nil,
 	})
 }
 
@@ -575,6 +541,5 @@ func (c *Client) GetPunishmentStatistics() (Response, error) {
 		Method: http.MethodGet,
 		Header: c.AuthHeader(),
 		Path:   "punishmentstats",
-		Params: nil,
 	})
 }
