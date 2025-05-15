@@ -11,8 +11,8 @@ type Params map[any]any
 
 // String Generate url string
 // If value is empty, it will be ignored
-func (p *Params) String(full string) string {
-	if len(*p) == 0 {
+func (p Params) String(full string) string {
+	if len(p) == 0 {
 		return full
 	}
 	u, err := url.Parse(full)
@@ -21,7 +21,7 @@ func (p *Params) String(full string) string {
 	}
 
 	q := u.Query()
-	for k, v := range *p {
+	for k, v := range p {
 		val := fmt.Sprint(v)
 		if val == "" {
 			continue
@@ -34,19 +34,19 @@ func (p *Params) String(full string) string {
 	return u.String()
 }
 
-func (p *Params) Get(k any) any {
-	return (*p)[k]
+func (p Params) Get(k any) any {
+	return p[k]
 }
 
-func (p *Params) Set(k, v any) {
-	(*p)[k] = v
+func (p Params) Set(k, v any) {
+	p[k] = v
 }
 
-func (p *Params) Del(k any) {
-	delete(*p, k)
+func (p Params) Del(k any) {
+	delete(p, k)
 }
 
-func (p *Params) Has(k any) bool {
-	_, ok := (*p)[k]
+func (p Params) Has(k any) bool {
+	_, ok := p[k]
 	return ok
 }
