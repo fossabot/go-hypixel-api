@@ -13,10 +13,6 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@master
 
-      - name: Configure git for private modules
-        run: |
-          git config --global url."https://${{ secrets.ACCESS_TOKEN }}@github.com".insteadOf "https://github.com"
-
       - name: Check out code
         uses: actions/checkout@master
 
