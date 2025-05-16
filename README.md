@@ -10,7 +10,9 @@
 
 Hypixel API wrapper in Golang
 
-⚠️ [Hypixel API Policy](https://api.hypixel.net/#section/Introduction/Policies)
+📕 [Hypixel API](https://api.hypixel.net)
+
+⚠️ [Hypixel API Policy](https://developer.hypixel.net/policies)
 
 ## License
  
