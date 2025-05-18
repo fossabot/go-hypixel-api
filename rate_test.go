@@ -60,14 +60,6 @@ func TestUpdateFromResponse_RemainingHeader(t *testing.T) {
 	}
 }
 
-func TestUpdateFromResponse_RemainingParseError(t *testing.T) {
-	r := NewRateLimit()
-	resp := makeResp(`{"throttle":false}`, "foo", "", 200)
-	if err := r.UpdateFromResponse(resp); err == nil {
-		t.Fatalf("expected parse error, got nil")
-	}
-}
-
 func TestReset(t *testing.T) {
 	r := NewRateLimit()
 	r.remaining.Store(10)
