@@ -1,93 +1,112 @@
 package hypixel
 
 import (
+	"bytes"
+	"encoding/json"
+	"io"
 	"net/http"
 	"strconv"
-	"sync"
+	"sync/atomic"
 	"time"
 )
 
 type RateLimit struct {
-	mu        sync.RWMutex
-	remaining int       // current remaining requests
-	resetAt   time.Time // next reset time
-	trusted   bool      // whether trusted initial headers have been received
+	remaining atomic.Int32 // -1 == exhausted/unknown, >0 == calls left
+	resetAt   atomic.Value // holds time.Time
 }
 
 func NewRateLimit() *RateLimit {
-	return &RateLimit{
-		remaining: -1, // -1 indicates unknown state
-	}
+	r := &RateLimit{}
+	r.remaining.Store(-1)
+	r.resetAt.Store(time.Time{})
+	return r
 }
 
-// WaitIfNeeded blocks until the next reset window if remaining quota is exhausted
+// WaitIfNeeded blocks until rate-limit reset if remaining ≤ 0 and resetAt is in the future.
 func (r *RateLimit) WaitIfNeeded() {
-	r.mu.RLock()
-	remaining, reset := r.remaining, r.resetAt
-	r.mu.RUnlock()
-
-	if remaining != 0 || time.Now().After(reset) {
+	remaining := r.remaining.Load()
+	if remaining > 0 {
 		return
 	}
 
-	if sleep := time.Until(reset); sleep > 0 {
-		const maxSleep = 5 * time.Minute // prevent excessive waiting
-		if sleep > maxSleep {
-			sleep = maxSleep
-		}
-		time.Sleep(sleep)
+	reset := r.resetAt.Load().(time.Time)
+	if reset.IsZero() || time.Now().After(reset) {
+		return
 	}
+
+	// Sleep up to the reset time (capped to hypixel api max reset: 5min)
+	sleep := time.Until(reset)
+	const maxSleep = 5 * time.Minute
+	if sleep > maxSleep {
+		sleep = maxSleep
+	}
+	time.Sleep(sleep)
 }
 
-// UpdateFromHeaders updates rate limits from HTTP headers, auto-consuming on trusted state
-func (r *RateLimit) UpdateFromHeaders(h http.Header) error {
-	remStr, resetStr := h.Get("RateLimit-Remaining"), h.Get("RateLimit-Reset")
-	if remStr == "" || resetStr == "" {
-		return nil // ignore non-rate-limited responses
-	}
-
-	rem, err := strconv.Atoi(remStr)
+// UpdateFromResponse updates rate limit state based on the HTTP response.
+func (r *RateLimit) UpdateFromResponse(resp *http.Response) error {
+	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return err
 	}
+	// Reset body to avoid double-read
+	resp.Body = io.NopCloser(bytes.NewBuffer(body))
 
-	secs, err := strconv.Atoi(resetStr)
-	if err != nil {
-		return err
+	var apiResp struct {
+		Throttle bool `json:"throttle"`
 	}
-	newReset := time.Now().Add(time.Duration(secs) * time.Second)
+	_ = json.Unmarshal(body, &apiResp)
 
-	r.mu.Lock()
-	defer r.mu.Unlock()
+	remStr := resp.Header.Get("RateLimit-Remaining")
+	resetStr := resp.Header.Get("RateLimit-Reset")
 
-	now := time.Now()
-	if !r.trusted || now.After(r.resetAt) {
-		if rem > 0 { // Only trust headers with positive remaining count
-			r.remaining = rem
-			r.resetAt = newReset
-			r.trusted = true
+	// can trust reset header
+	if resetStr != "" {
+		if secs, err := strconv.Atoi(resetStr); err == nil {
+			resetTime := time.Now().Add(time.Duration(secs) * time.Second)
+			r.resetAt.Store(resetTime)
 		}
-	} else if r.remaining > 0 {
-		r.remaining-- // Local consumption for subsequent requests
 	}
 
+	if apiResp.Throttle {
+		r.remaining.Store(-1)
+		return nil
+	}
+
+	// Only trust remaining header on 200 OK
+	// Thanks hypixel api
+	// ⬇
+	// {"success":false,"cause":"You have already looked up this player too recently, please try again shortly"}
+	// {"success":false,"cause":"Too many requests in the last second","throttle":true}
+	if resp.StatusCode == http.StatusOK && remStr != "" {
+		if rem, err := strconv.Atoi(remStr); err == nil {
+			if rem == 0 {
+				r.remaining.Store(-1)
+			} else {
+				r.remaining.Store(int32(rem))
+			}
+			return nil
+		}
+	}
+
+	switch cur := r.remaining.Load(); {
+	case cur > 0:
+		r.remaining.Add(-1)
+	case cur == 0:
+		r.remaining.Store(-1)
+	}
 	return nil
 }
 
-// Reset clears all rate limiting state
+// Reset clears all rate-limit state
 func (r *RateLimit) Reset() {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	r.remaining = -1
-	r.resetAt = time.Time{}
-	r.trusted = false
+	r.remaining.Store(-1)
+	r.resetAt.Store(time.Time{})
 }
 
-// String returns current rate limit status for debugging
+// String impl fmt.Stringer
 func (r *RateLimit) String() string {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-	return strconv.Itoa(r.remaining) + " remaining until " +
-		r.resetAt.Format(time.RFC3339) + " (trusted:" +
-		strconv.FormatBool(r.trusted) + ")"
+	reset := r.resetAt.Load().(time.Time)
+	return strconv.Itoa(int(r.remaining.Load())) +
+		" remaining until " + reset.Format(time.RFC3339)
 }
