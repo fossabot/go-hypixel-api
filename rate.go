@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"io"
+	"math"
 	"net/http"
 	"strconv"
 	"sync/atomic"
@@ -55,7 +56,9 @@ func (r *RateLimit) UpdateFromResponse(resp *http.Response) error {
 	var apiResp struct {
 		Throttle bool `json:"throttle"`
 	}
-	_ = json.Unmarshal(body, &apiResp)
+	if err := json.Unmarshal(body, &apiResp); err != nil {
+		return err
+	}
 
 	remStr := resp.Header.Get("RateLimit-Remaining")
 	resetStr := resp.Header.Get("RateLimit-Reset")
@@ -65,6 +68,8 @@ func (r *RateLimit) UpdateFromResponse(resp *http.Response) error {
 		if secs, err := strconv.Atoi(resetStr); err == nil {
 			resetTime := time.Now().Add(time.Duration(secs) * time.Second)
 			r.resetAt.Store(resetTime)
+		} else {
+			return err
 		}
 	}
 
@@ -80,20 +85,21 @@ func (r *RateLimit) UpdateFromResponse(resp *http.Response) error {
 	// {"success":false,"cause":"Too many requests in the last second","throttle":true}
 	if resp.StatusCode == http.StatusOK && remStr != "" {
 		if rem, err := strconv.Atoi(remStr); err == nil {
-			if rem == 0 {
+			switch {
+			case rem == 0:
 				r.remaining.Store(-1)
-			} else {
+			case rem > math.MinInt32 && rem <= math.MaxInt32:
 				r.remaining.Store(int32(rem))
+			default:
+				r.remaining.Store(-1)
 			}
 			return nil
 		}
+		return err
 	}
 
-	switch cur := r.remaining.Load(); {
-	case cur > 0:
+	if r.remaining.Load() > 0 {
 		r.remaining.Add(-1)
-	case cur == 0:
-		r.remaining.Store(-1)
 	}
 	return nil
 }
